@@ -9,7 +9,9 @@ import ssl
 import time
 import os
 """
-add comments
+1. add comments
+
+2. add daily
 """
 
 
@@ -21,6 +23,7 @@ class main_arxiv(object):
         """query_word: month_year, recent, pastweek"""
         self.original_url = 'https://arxiv.org/'
         self.domain_url = self.original_url + 'list/' + domain + query_word
+        assert 'all' or 'daily' in query_mode, 'please input correct query mode(all, daily)'
         self.query_mode = query_mode
         self.headers = {
             'User-Agent':
@@ -59,9 +62,15 @@ class main_arxiv(object):
         response = self.get_url_context(self.domain_url)
         # get the target page range
         soup = BeautifulSoup(response, 'lxml')
+        # all mode
         if self.query_mode == 'all':
             html_all_page = soup.find('div', id='dlpage').find('small').text
             pattern = re.compile(r'.*?total of (\d*) entries.*?', re.S)
+            target_total_page = pattern.findall(html_all_page)
+        # add daily mode
+        elif self.query_mode == 'daily':
+            html_all_page = soup.find('h3').text
+            pattern = re.compile(r'.*? of (\d*) entries.*?', re.S)
             target_total_page = pattern.findall(html_all_page)
 
         query_string = {
@@ -88,6 +97,9 @@ class main_arxiv(object):
             query_state = False
 
             title_temp = list_title_dd[i].find('div', class_='list-title mathjax').text
+            comments_temp = list_title_dd[i].find('div', class_='list-comments mathjax')
+            if comments_temp:
+                comments_temp_text = comments_temp.text.replace('\n', '')
             pdf_temp = list_pdf_dt[i].find('a', title='Download PDF')['href']
 
             title_name = pattern_title.findall(title_temp)[0]
@@ -115,11 +127,14 @@ class main_arxiv(object):
                 abstract_text = soup.find('blockquote', class_='abstract mathjax').text.replace('\n', ' ')
 
                 ab_f.write("[{}] ".format(str(i)) + title_name + '\n' * 2)
+                if comments_temp:
+                    ab_f.write(comments_temp_text + '\n')
                 ab_f.write(abstract_text + '\n' * 2)
         ab_f.close()
 
 
 if __name__ == "__main__":
     query_word = input("input your query range:")
-    arxiv_download = main_arxiv(query_word=query_word)
+    query_mode = input("input your query mode:")
+    arxiv_download = main_arxiv(query_word=query_word, query_mode=query_mode)
     arxiv_download.run_get_pdf()
