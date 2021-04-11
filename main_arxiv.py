@@ -18,19 +18,22 @@ import os
 class main_arxiv(object):
 
     def __init__(self, query_word: str, domain='cs.CV/', query_mode='all',
-                 key_words=['self-supervised', 'transformer', 'contrastive learning', 'anomaly detection',
-                           'novelty detection', 'representation learning', 'out-of-distribution']):
+                 key_words=['self-supervised', 'contrastive learning', 'anomaly detection',
+                           'novelty detection', 'representation learning', 'out-of-distribution'],
+                 key_words_conference=['ICLR', 'CVPR', 'ICML', 'ICCV'],
+                 download_root_dir='/Users/zhangzilong/Desktop/arxiv/'):
         """query_word: month_year, recent, pastweek"""
         self.original_url = 'https://arxiv.org/'
         self.domain_url = self.original_url + 'list/' + domain + query_word
-        assert 'all' or 'daily' in query_mode, 'please input correct query mode(all, daily)'
+        assert 'all' in query_mode or 'daily' in query_mode, 'please input correct query mode(all, daily)'
         self.query_mode = query_mode
         self.headers = {
             'User-Agent':
                 'Mozilla/5.0 (Macintosh; Intel Mac OS X 11_1_0) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/88.0.4324.182 Safari/537.36'
         }
         self.key_words = key_words
-        self.root_dir = '/Users/zhangzilong/Desktop/arxiv/'
+        self.key_words_conference = key_words_conference
+        self.root_dir = download_root_dir
         current_time = time.strftime("%Y_%m_%d", time.localtime())
         self.current_time_dir = self.root_dir + current_time
         if not os.path.exists(self.current_time_dir):
@@ -95,6 +98,7 @@ class main_arxiv(object):
 
         for i in range(len(list_pdf_dt)):
             query_state = False
+            comments_temp_text = ''
 
             title_temp = list_title_dd[i].find('div', class_='list-title mathjax').text
             comments_temp = list_title_dd[i].find('div', class_='list-comments mathjax')
@@ -116,6 +120,13 @@ class main_arxiv(object):
                 if pattern_word_match.findall(title_name.lower()):
                     query_state = True
                     self.get_pdf(title_name_pdf, pdf_temp, element='unsupervised learning', UL=True)
+
+            if not query_state:
+                for element in self.key_words_conference:
+                    if element in comments_temp_text:
+                        query_state = True
+                        self.get_pdf(title_name_pdf, pdf_temp, element)
+                        break
 
             if query_state:
                 start_val_paper += 1
